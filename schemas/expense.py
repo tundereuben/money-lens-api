@@ -2,7 +2,7 @@ from pydantic import BaseModel, ConfigDict
 from datetime import date
 from typing import Optional
 
-from schemas.category import CategoryOut
+from schemas.category import CategoryResponse
 
 class ExpenseBase(BaseModel):
     amount: float
@@ -22,7 +22,7 @@ class ExpenseUpdate(BaseModel):
 class ExpenseResponse(ExpenseBase):
     id: int
     user_id: int
-    category: CategoryOut
+    category: CategoryResponse
 
     model_config = ConfigDict(from_attributes=True)
 
