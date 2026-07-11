@@ -13,6 +13,7 @@ def create_category(db: Session, category_data: CategoryCreate, user_id: int):
     db.refresh(new_category)
     return new_category
 
+
 def get_categories(db: Session, user_id: int, skip: int = 0, limit: int = 100):
     return db.query(Category).filter(Category.user_id == user_id).offset(skip).limit(limit).all()
 

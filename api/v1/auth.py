@@ -39,20 +39,3 @@ def login(
         "access_token": token,
         "token_type": "bearer",
     }
-
-# @router.post("/login", response_model=Token)
-# def login(
-#     form_data: OAuth2PasswordRequestForm = Depends(), 
-#     db: Session = Depends(get_db)
-# ):
-#     user = authenticate_user(db, form_data.username, form_data.password)
-#     if not user:
-#         raise HTTPException(
-#             status_code=status.HTTP_401_UNAUTHORIZED,
-#             detail="Incorrect username or password",
-#         )
-#     token = create_access_token(data={"sub": user.email})
-#     return {
-#         "access_token": token,
-#         "token_type": "bearer",
-#     }

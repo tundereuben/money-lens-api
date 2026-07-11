@@ -30,12 +30,3 @@ class CategoryResponse(CategoryBase):
     category_type: CategoryType | None = None
 
     model_config = ConfigDict(from_attributes=True)
-
-
-# class CategoryOut(BaseModel):
-#     id: int
-#     name: str
-#     category_type: CategoryType | None = None
-
-#     class Config:
-#         from_attributes = True

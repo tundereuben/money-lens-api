@@ -5,6 +5,7 @@ from typing import Optional
 from datetime import date
 from models.expense import Expense
 from models.category import Category
+from models.budget import Budget
 from schemas.expense import ExpenseCreate, ExpenseUpdate
 
 def create_expense(db: Session, expense_data: ExpenseCreate, user_id: int):
@@ -125,6 +126,10 @@ def get_expense_summary(
             "date": e.date
         })
 
+    # Fetch all budgets for the user to map them to categories
+    budgets = db.query(Budget).filter(Budget.user_id == user_id).all()
+    budget_map = {b.category_id: float(b.amount) for b in budgets}
+
     total_amount = sum(item.total_amount for item in category_data)
 
     summaries = []
@@ -134,6 +139,7 @@ def get_expense_summary(
             "category_name": item.category_name,
             "total_amount": float(item.total_amount),
             "percentage": (float(item.total_amount) / total_amount * 100) if total_amount > 0 else 0,
+            "budget": budget_map.get(item.category_id),
             "expenses": expense_map.get(item.category_id, [])
         })
 
