@@ -7,8 +7,12 @@ from schemas.category import CategoryResponse
 class ExpenseBase(BaseModel):
     amount: float
     date: date
+    time: Optional[str] = None
     description: Optional[str] = None
     category_id: int
+    payment_method_id: Optional[int] = None
+    account_id: Optional[int] = None
+    notes: Optional[str] = None
 
 class ExpenseCreate(ExpenseBase):
     pass
@@ -18,6 +22,7 @@ class ExpenseUpdate(BaseModel):
     date: Optional[date] = None
     description: Optional[str] = None
     category_id: Optional[int] = None
+
 
 class ExpenseResponse(ExpenseBase):
     id: int

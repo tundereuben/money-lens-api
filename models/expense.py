@@ -11,6 +11,10 @@ class Expense(Base):
     description = Column(String, nullable=True)
     category_id = Column(Integer, ForeignKey('categories.id'), nullable=False)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    time = Column(String, nullable=True)
+    payment_method_id = Column(Integer, nullable=True)
+    account_id = Column(Integer, nullable=True)
+    notes = Column(String, nullable=True)
 
     user = relationship('User', back_populates='expenses')
     category = relationship('Category', back_populates='expenses')
