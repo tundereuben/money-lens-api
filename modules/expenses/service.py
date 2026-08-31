@@ -41,7 +41,8 @@ def get_expenses(
     ).filter(
         Expense.user_id == user_id
     ).order_by(
-        Expense.date.desc()
+        Expense.date.desc(),
+        Expense.id.desc()
     )
     
     if start_date:
@@ -128,18 +129,27 @@ def get_expense_summary(
 
     # Fetch all budgets for the user to map them to categories
     budgets = db.query(Budget).filter(Budget.user_id == user_id).all()
-    budget_map = {b.category_id: float(b.amount) for b in budgets}
+
+    budget_map = {
+        b.category_id: {
+            "budget_id": b.id,
+            "amount": float(b.amount)
+        }
+        for b in budgets
+    }
 
     total_amount = sum(item.total_amount for item in category_data)
 
     summaries = []
     for item in category_data:
+        budget = budget_map.get(item.category_id, {})
         summaries.append({
             "category_id": item.category_id,
             "category_name": item.category_name,
             "total_amount": float(item.total_amount),
             "percentage": (float(item.total_amount) / total_amount * 100) if total_amount > 0 else 0,
-            "budget": budget_map.get(item.category_id),
+            "budget_id": budget.get("budget_id"),
+            "budget": budget.get("amount"),
             "expenses": expense_map.get(item.category_id, [])
         })
 

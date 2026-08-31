@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import date
+from datetime import date as dt_date
 
 from models.category import Category
 from shared.dependencies import get_db, get_current_user, get_category_by_id
@@ -13,11 +13,12 @@ router = APIRouter(prefix="/expenses", tags=["Expenses"])
 
 @router.get("/summary", response_model=ExpenseSummaryResponse)
 def get_expense_summary(
-    start_date: Optional[date] = None,
-    end_date: Optional[date] = None,
+    start_date: Optional[dt_date] = None,
+    end_date: Optional[dt_date] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    
     return expense_service.get_expense_summary(db, current_user.id, start_date, end_date)
 
 @router.post("/", response_model=ExpenseResponse, status_code=status.HTTP_201_CREATED)
@@ -32,8 +33,8 @@ def create_expense(
 def get_expenses(
     skip: int = 0,
     limit: int = 100,
-    start_date: Optional[date] = None,
-    end_date: Optional[date] = None,
+    start_date: Optional[dt_date] = None,
+    end_date: Optional[dt_date] = None,
     category_id: Optional[int] = None,
     min_amount: Optional[float] = None,
     max_amount: Optional[float] = None,

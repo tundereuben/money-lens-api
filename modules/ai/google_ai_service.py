@@ -6,6 +6,7 @@ from google import genai
 from google.genai import types
 from google.genai.errors import ClientError
 import os
+from datetime import datetime
 
 from tenacity import retry, stop_after_attempt, wait_fixed
 
@@ -43,35 +44,40 @@ def extract_transaction(audio_path: str):
         time.sleep(2)  # Wait for a second before checking again
 
     
-    prompt = """
+    prompt_template = """
     You are an intelligent financial assistant.
     Your goal is to extract one or more expenses from spoken language.
+
+    CURRENT DATETIME CONTEXT:
+    - Today's Date: {{CURRENT_DATE}} (Format: YYYY-MM-DD)
+    - Current Time: {{CURRENT_TIME}} (Format: HH:MM:SS)
+
     Rules:
-    - Ignore greetings.
-    - Ignore unrelated conversation.
-    - If multiple expenses are mentioned, return all.
-    - Amount must be numeric.
-    - Never invent values.
-    - If uncertain, return null.
+    - Ignore greetings and unrelated conversation.
+    - If multiple expenses are mentioned, return all as an array of JSON objects.
+    - Amount must be numeric. Never invent values.
+    - If uncertain about an amount, return null.
     - Category must come from the supplied category list.
     - Payment method must come from the supplied payment methods.
-    - Use today's date if no date is spoken.
-    - Use the current time if no time is spoken.
+    - If no date is spoken, use Today's Date ({{CURRENT_DATE}}).
+    - If no time is spoken, use Current Time ({{CURRENT_TIME}}).
     - Do not create duplicate transactions for repeated statements unless they clearly describe separate payments.
-    - Add item only as description, any other details should be in notes.
-    - Return ONLY JSON:
+    - Add the primary item name as "description". Any extra context goes in "notes".
+    - Return ONLY a JSON array of objects:
 
+    [
     {
         "amount": 0,
-        "date": null,
+        "date": "YYYY-MM-DD",
         "description": null,
         "category_id": 0,
         "user_id": 0,
-        "time": null,
+        "time": "HH:MM:SS",
         "payment_method_id": null,
         "account_id": null,
         "notes": null
     }
+    ]
 
     Available categories:
     2: utilities
@@ -85,14 +91,18 @@ def extract_transaction(audio_path: str):
     10: miscellaneous
 
     Payment methods:
-    1 Cash
-    2 Debit Card
-    3 Credit Card
-    4 Bank Transfer
-    5 Mobile Money
-
-    Use current date and time for the "date" and "time" fields. If any field is not present in the audio, set it to null or 0 as appropriate.
+    0: Cash
+    1: Debit Card
+    2: Bank Transfer
+    3: USSD
     """
+
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    current_time = datetime.now().strftime("%H:%M:%S")
+
+    prompt = prompt_template.replace("{{CURRENT_DATE}}", current_date).replace(
+        "{{CURRENT_TIME}}", current_time
+    )
 
     try: 
         response = client.models.generate_content(
@@ -101,8 +111,10 @@ def extract_transaction(audio_path: str):
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
                 response_schema = list[ExpenseCreate]
-            )
+            )  
         )
+
+        
     
     except ClientError as e:
         logger.exception("Gemini API error")

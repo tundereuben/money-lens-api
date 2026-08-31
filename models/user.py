@@ -13,4 +13,5 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
 
     categories = relationship('Category', back_populates='user', cascade='all, delete-orphan')
+    user_categories = relationship('UserCategory', back_populates='user', cascade='all, delete-orphan')
     expenses = relationship('Expense', back_populates='user', cascade='all, delete-orphan')

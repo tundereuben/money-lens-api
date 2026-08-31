@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
-from models.category import Category
+from models.category import Category, UserCategory
 from schemas.category import CategoryCreate, CategoryUpdate
 
 def create_category(db: Session, category_data: CategoryCreate, user_id: int):
@@ -16,6 +16,18 @@ def create_category(db: Session, category_data: CategoryCreate, user_id: int):
 
 def get_categories(db: Session, user_id: int, skip: int = 0, limit: int = 100):
     return db.query(Category).filter(Category.user_id == user_id).offset(skip).limit(limit).all()
+
+
+def get_user_categories(db: Session, user_id: int, skip: int = 0, limit: int = 100):
+    return (
+        db.query(Category)
+        .join(UserCategory, UserCategory.category_id == Category.id)
+        .filter(UserCategory.user_id == user_id, UserCategory.is_active.is_(True))
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
 
 def get_category(db: Session, category_id: int, user_id: int):
     category = db.query(Category).filter(Category.id == category_id, Category.user_id == user_id).first()

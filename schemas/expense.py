@@ -46,6 +46,7 @@ class CategorySummary(BaseModel):
     total_amount: float
     percentage: float
     budget: Optional[float] = None
+    budget_id: Optional[int] = None
     expenses: list[ExpenseMini]
 
 class ExpenseSummaryResponse(BaseModel):

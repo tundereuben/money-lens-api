@@ -18,6 +18,17 @@ def get_categories(
 ):
     return category_service.get_categories(db, current_user.id, skip, limit)
 
+
+@router.get("/assigned", response_model=List[CategoryResponse])
+def get_assigned_categories(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    return category_service.get_user_categories(db, current_user.id, skip, limit)
+
+
 @router.post("/", response_model=CategoryResponse, status_code=status.HTTP_201_CREATED)
 def create_category(
     category_data: CategoryCreate,
