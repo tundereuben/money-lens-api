@@ -13,10 +13,19 @@ router = APIRouter(prefix='/budgets', tags=['Budgets'])
 def get_budgets(
     skip: int = 0,
     limit: int = 100,
+    category_id: int | None = None,
+    system_category_id: int | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    return budget_service.get_budgets(db, current_user.id, skip, limit)
+    return budget_service.get_budgets(
+        db,
+        current_user.id,
+        skip,
+        limit,
+        category_id,
+        system_category_id,
+    )
 
 
 @router.post("/", response_model=BudgetResponse, status_code=status.HTTP_201_CREATED)
