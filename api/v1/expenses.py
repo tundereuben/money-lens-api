@@ -3,11 +3,11 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import date as dt_date
 
-from models.category import Category
-from shared.dependencies import get_db, get_current_user, get_category_by_id
+from shared.dependencies import get_db, get_current_user
 from schemas.expense import ExpenseCreate, ExpenseUpdate, ExpenseResponse, ExpenseSummaryResponse
 from modules.expenses import service as expense_service
 from models.user import User
+from schemas.money import MoneyAmount
 
 router = APIRouter(prefix="/expenses", tags=["Expenses"])
 
@@ -36,9 +36,8 @@ def get_expenses(
     start_date: Optional[dt_date] = None,
     end_date: Optional[dt_date] = None,
     category_id: Optional[int] = None,
-    system_category_id: Optional[int] = None,
-    min_amount: Optional[float] = None,
-    max_amount: Optional[float] = None,
+    min_amount: Optional[MoneyAmount] = None,
+    max_amount: Optional[MoneyAmount] = None,
     search: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -52,7 +51,6 @@ def get_expenses(
         start_date=start_date,
         end_date=end_date,
         category_id=category_id,
-        system_category_id=system_category_id,
         min_amount=min_amount,
         max_amount=max_amount,
         search=search,

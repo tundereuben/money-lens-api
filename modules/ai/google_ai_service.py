@@ -18,10 +18,9 @@ client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
-def extract_transaction(audio_path: str):
+def extract_transaction(audio_path: str, categories: list[dict[str, object]]):
     timeout = 60  # seconds
     start = time.time()
-    # perf_time = time.perf_counter()
     
     uploaded = client.files.upload(
         file=audio_path,  
@@ -36,7 +35,7 @@ def extract_transaction(audio_path: str):
 
         if uploaded_file.state.name == "FAILED":
             print(uploaded_file)
-            raise Exception("File processing failed")
+            raise RuntimeError("File processing failed")
                 
         if time.time() - start > timeout:
             raise TimeoutError("File processing timed out")
@@ -80,15 +79,7 @@ def extract_transaction(audio_path: str):
     ]
 
     Available categories:
-    2: utilities
-    3: housing
-    4: food & groceries
-    5: transportation
-    6: health care & medical
-    7: personal & family care
-    8: entertainment & subscriptions
-    9: financial obligations & savings
-    10: miscellaneous
+    {{CATEGORIES}}
 
     Payment methods:
     0: Cash
@@ -102,6 +93,9 @@ def extract_transaction(audio_path: str):
 
     prompt = prompt_template.replace("{{CURRENT_DATE}}", current_date).replace(
         "{{CURRENT_TIME}}", current_time
+    ).replace(
+        "{{CATEGORIES}}",
+        "\n".join(f"{category['id']}: {category['name']}" for category in categories),
     )
 
     try: 
@@ -125,10 +119,5 @@ def extract_transaction(audio_path: str):
             client.files.delete(name=uploaded.name)
         except ClientError as e:
             logger.exception("Failed to delete uploaded file: " + str(e))
-
-    # logger.info(
-    # "Expense extraction took %.2f seconds",
-    # time.perf_counter() - perf_time
-    # )
 
     return response.parsed

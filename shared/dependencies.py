@@ -1,11 +1,10 @@
-from fastapi import Depends, HTTPException, status, Path
+from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 from core.config import get_settings
 from db.session import SessionLocal
 from models.user import User
-from models.category import Category
 
 settings = get_settings()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
@@ -35,20 +34,3 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
     if user is None:
         raise credentials_exception
     return user
-
-
-def get_category_by_id(
-    category_id: int = Path(...),
-    db: Session = Depends(get_db)
-):
-    category = db.query(Category).filter(
-        Category.id == category_id
-    ).first()
-
-    if not category:
-        raise HTTPException(
-            status_code=404,
-            detail="Category not found"
-        )
-
-    return category

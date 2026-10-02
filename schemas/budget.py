@@ -1,33 +1,33 @@
-from pydantic import BaseModel, model_validator
-from datetime import date
+from pydantic import BaseModel, ConfigDict, field_validator
+from decimal import Decimal
 from typing import Optional
 
-from schemas.category import CategoryResponse, SystemCategoryResponse
+from schemas.category import UserCategoryResponse
+from schemas.money import PositiveMoneyAmount
 
 class BudgetCreate(BaseModel):
     name: str
-    amount: float
-    category_id: Optional[int] = None
-    system_category_id: Optional[int] = None
-
-    @model_validator(mode="after")
-    def has_exactly_one_category_source(self):
-        if (self.category_id is None) == (self.system_category_id is None):
-            raise ValueError("Provide exactly one of category_id or system_category_id")
-        return self
+    amount: PositiveMoneyAmount
+    category_id: int
 
 class BudgetUpdate(BaseModel):
     name: Optional[str] = None
-    amount: Optional[float]
+    amount: Optional[PositiveMoneyAmount] = None
     category_id: Optional[int] = None
-    system_category_id: Optional[int] = None
+
+    @field_validator("name", "amount", "category_id", mode="before")
+    @classmethod
+    def reject_null_required_fields(cls, value):
+        if value is None:
+            raise ValueError("Field cannot be null")
+        return value
     
 class BudgetResponse(BaseModel):
     id: int
     user_id: int
     name: str
-    amount: float
-    category_id: Optional[int] = None
-    system_category_id: Optional[int] = None
-    category: Optional[CategoryResponse] = None
-    system_category: Optional[SystemCategoryResponse] = None
+    amount: Decimal
+    category_id: int
+    user_category: UserCategoryResponse
+
+    model_config = ConfigDict(from_attributes=True)

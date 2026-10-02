@@ -3,7 +3,7 @@ from logging.config import fileConfig
 from alembic import context
 from core.config import get_settings
 from db.session import Base, engine
-from models import category, expense, user
+from models import category, transaction, user
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

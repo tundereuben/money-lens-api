@@ -1,34 +1,19 @@
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException, status
-from models.category import Category, SystemCategory, UserCategory
+from models.category import SystemCategory, UserCategory
+from models.budget import Budget
+from models.transaction import Transaction
 from schemas.category import (
-    CategoryCreate,
-    CategoryUpdate,
     SystemCategoryCreate,
     SystemCategorySelectionReplace,
     SystemCategoryUpdate,
 )
 
-def create_category(db: Session, category_data: CategoryCreate, user_id: int):
-    new_category = Category(
-        **category_data.model_dump(),
-        user_id=user_id
-    )
-    db.add(new_category)
-    db.commit()
-    db.refresh(new_category)
-    return new_category
-
-
 def get_categories(db: Session, user_id: int, skip: int = 0, limit: int = 100):
-    return db.query(Category).filter(Category.user_id == user_id).offset(skip).limit(limit).all()
-
-
-def get_user_categories(db: Session, user_id: int, skip: int = 0, limit: int = 100):
     return (
-        db.query(Category)
-        .join(UserCategory, UserCategory.category_id == Category.id)
+        db.query(UserCategory)
+        .options(joinedload(UserCategory.system_category))
         .filter(UserCategory.user_id == user_id, UserCategory.is_active.is_(True))
         .offset(skip)
         .limit(limit)
@@ -36,29 +21,8 @@ def get_user_categories(db: Session, user_id: int, skip: int = 0, limit: int = 1
     )
 
 
-def get_category(db: Session, category_id: int, user_id: int):
-    category = db.query(Category).filter(Category.id == category_id, Category.user_id == user_id).first()
-    if not category:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
-    return category
-
-def update_category(db: Session, category_id: int, category_data: CategoryUpdate, user_id: int):
-    category = get_category(db, category_id, user_id)
-    
-    update_data = category_data.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(category, key, value)
-    
-    db.commit()
-    db.refresh(category)
-    return category
-
-def delete_category(db: Session, category_id: int, user_id: int):
-    category = get_category(db, category_id, user_id)
-    # Note: SQLAlchemy relationship in models/category.py handles cascade delete for expenses
-    db.delete(category)
-    db.commit()
-    return {"message": "Category deleted successfully"}
+def get_user_categories(db: Session, user_id: int, skip: int = 0, limit: int = 100):
+    return get_categories(db, user_id, skip, limit)
 
 
 def get_system_categories(db: Session, skip: int = 0, limit: int = 100):
@@ -72,25 +36,80 @@ def get_system_category(db: Session, category_id: int):
     return category
 
 
-def create_system_category(db: Session, category_data: SystemCategoryCreate):
-    category = SystemCategory(**category_data.model_dump())
+def get_owned_system_category(db: Session, category_id: int, user_id: int):
+    category = (
+        db.query(SystemCategory)
+        .filter(
+            SystemCategory.id == category_id,
+            SystemCategory.created_by_type == "USER",
+            SystemCategory.created_by_user_id == user_id,
+        )
+        .first()
+    )
+    if not category:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="System category not found",
+        )
+    return category
+
+
+def create_system_category(db: Session, category_data: SystemCategoryCreate, user_id: int):
+    category = SystemCategory(
+        **category_data.model_dump(),
+        created_by_type='USER',
+        created_by_user_id=user_id,
+    )
     db.add(category)
     db.commit()
     db.refresh(category)
     return category
 
 
-def update_system_category(db: Session, category_id: int, category_data: SystemCategoryUpdate):
-    category = get_system_category(db, category_id)
-    for key, value in category_data.model_dump(exclude_unset=True).items():
+def update_system_category(
+    db: Session,
+    category_id: int,
+    category_data: SystemCategoryUpdate,
+    user_id: int,
+):
+    category = get_owned_system_category(db, category_id, user_id)
+    update_data = category_data.model_dump(exclude_unset=True)
+    new_category_type = update_data.get("category_type")
+    if "category_type" in update_data and new_category_type is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Category type cannot be null",
+        )
+    if new_category_type and new_category_type.value != category.category_type:
+        transaction_in_use = (
+            db.query(Transaction.id)
+            .join(UserCategory, Transaction.category_id == UserCategory.id)
+            .filter(UserCategory.system_category_id == category_id)
+            .first()
+        )
+        budget_in_use = (
+            db.query(Budget.id)
+            .join(UserCategory, Budget.category_id == UserCategory.id)
+            .filter(UserCategory.system_category_id == category_id)
+            .first()
+        )
+        if transaction_in_use or budget_in_use:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Category type cannot change while the category is in use",
+            )
+
+    for key, value in update_data.items():
+        if key == "category_type" and value is not None:
+            value = value.value
         setattr(category, key, value)
     db.commit()
     db.refresh(category)
     return category
 
 
-def delete_system_category(db: Session, category_id: int):
-    category = get_system_category(db, category_id)
+def delete_system_category(db: Session, category_id: int, user_id: int):
+    category = get_owned_system_category(db, category_id, user_id)
     db.delete(category)
     try:
         db.commit()

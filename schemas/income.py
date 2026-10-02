@@ -1,12 +1,14 @@
-from pydantic import BaseModel, ConfigDict, field_validator
 from datetime import date
 from decimal import Decimal
 from typing import Optional
 
+from pydantic import BaseModel, ConfigDict, field_validator
+
 from schemas.category import UserCategoryResponse
 from schemas.money import MoneyAmount
 
-class ExpenseBase(BaseModel):
+
+class IncomeBase(BaseModel):
     amount: MoneyAmount
     date: date
     time: Optional[str] = None
@@ -16,14 +18,20 @@ class ExpenseBase(BaseModel):
     account_id: Optional[int] = None
     notes: Optional[str] = None
 
-class ExpenseCreate(ExpenseBase):
+
+class IncomeCreate(IncomeBase):
     pass
 
-class ExpenseUpdate(BaseModel):
+
+class IncomeUpdate(BaseModel):
     amount: Optional[MoneyAmount] = None
     date: Optional[date] = None
+    time: Optional[str] = None
     description: Optional[str] = None
     category_id: Optional[int] = None
+    payment_method_id: Optional[int] = None
+    account_id: Optional[int] = None
+    notes: Optional[str] = None
 
     @field_validator("amount", "date", "category_id", mode="before")
     @classmethod
@@ -33,31 +41,32 @@ class ExpenseUpdate(BaseModel):
         return value
 
 
-class ExpenseResponse(ExpenseBase):
+class IncomeResponse(IncomeBase):
     id: int
     user_id: int
     user_category: UserCategoryResponse
 
     model_config = ConfigDict(from_attributes=True)
 
-class ExpenseMini(BaseModel):
+
+class IncomeMini(BaseModel):
     id: int
     amount: Decimal
     date: date
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
-class CategorySummary(BaseModel):
+class IncomeCategorySummary(BaseModel):
     category_id: int
     category_name: str
     total_amount: Decimal
     percentage: float
-    budget: Optional[Decimal] = None
-    budget_id: Optional[int] = None
-    expenses: list[ExpenseMini]
+    incomes: list[IncomeMini]
 
-class ExpenseSummaryResponse(BaseModel):
-    total_amount: Decimal
-    categories: list[CategorySummary]
+
+class IncomeSummaryResponse(BaseModel):
+    total_income: Decimal
+    total_expenses: Decimal
+    net_cash_flow: Decimal
+    categories: list[IncomeCategorySummary]

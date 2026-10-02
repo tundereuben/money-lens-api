@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from db.session import engine
 from api.v1.auth import router as auth_router
 from api.v1.expenses import router as expenses_router
+from api.v1.incomes import router as incomes_router
+from api.v1.transactions import router as transactions_router
 from api.v1.categories import router as categories_router
 from api.v1.budgets import router as budgets_router
 from api.v1.ai import router as ai_router
@@ -28,6 +30,8 @@ app.add_middleware(
 
 app.include_router(auth_router)
 app.include_router(expenses_router)
+app.include_router(incomes_router)
+app.include_router(transactions_router)
 app.include_router(categories_router)
 app.include_router(budgets_router)
 app.include_router(ai_router)

@@ -14,7 +14,6 @@ def get_budgets(
     skip: int = 0,
     limit: int = 100,
     category_id: int | None = None,
-    system_category_id: int | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -24,7 +23,6 @@ def get_budgets(
         skip,
         limit,
         category_id,
-        system_category_id,
     )
 
 

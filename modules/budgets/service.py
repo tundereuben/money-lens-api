@@ -1,55 +1,41 @@
 from sqlalchemy.orm import Session, joinedload
 from fastapi import HTTPException, status
 from models.budget import Budget
-from models.category import Category, UserCategory
+from models.category import UserCategory
 from schemas.budget import BudgetCreate, BudgetUpdate, BudgetResponse
+from schemas.category import CategoryType
 
 
-def validate_budget_category_source(
+def get_active_user_category(
     db: Session,
     user_id: int,
-    category_id: int | None,
-    system_category_id: int | None,
+    category_id: int,
 ):
-    if (category_id is None) == (system_category_id is None):
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Provide exactly one of category_id or system_category_id",
-        )
-
-    if category_id is not None:
-        category = (
-            db.query(Category)
-            .filter(Category.id == category_id, Category.user_id == user_id)
-            .first()
-        )
-        if not category:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
-        return
-
-    selection = (
+    category = (
         db.query(UserCategory)
+        .options(joinedload(UserCategory.system_category))
         .filter(
             UserCategory.user_id == user_id,
-            UserCategory.system_category_id == system_category_id,
+            UserCategory.id == category_id,
             UserCategory.is_active.is_(True),
         )
         .first()
     )
-    if not selection:
+    if not category:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Selected system category not found",
+            detail="Active category not found",
         )
+    if category.system_category.category_type != CategoryType.EXPENSE.value:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Budgets require an expense category",
+        )
+    return category
 
 
 def create_budget(db: Session, budget_data: BudgetCreate, user_id: int):
-    validate_budget_category_source(
-        db,
-        user_id,
-        budget_data.category_id,
-        budget_data.system_category_id,
-    )
+    get_active_user_category(db, user_id, budget_data.category_id)
 
     new_budget = Budget(
         **budget_data.model_dump(),
@@ -68,17 +54,14 @@ def get_budgets(
     skip: int = 0,
     limit: int = 100,
     category_id: int | None = None,
-    system_category_id: int | None = None,
 ):
     query = (
         db.query(Budget)
-        .options(joinedload(Budget.category), joinedload(Budget.system_category))
+        .options(joinedload(Budget.user_category).joinedload(UserCategory.system_category))
         .filter(Budget.user_id == user_id)
     )
     if category_id is not None:
         query = query.filter(Budget.category_id == category_id)
-    if system_category_id is not None:
-        query = query.filter(Budget.system_category_id == system_category_id)
     return query.offset(skip).limit(limit).all()
 
 
@@ -92,13 +75,8 @@ def update_budget(db: Session, budget_id: int, budget_data: BudgetUpdate, user_i
     budget = get_budget(db, budget_id, user_id)
 
     update_data = budget_data.model_dump(exclude_unset=True)
-    if {"category_id", "system_category_id"} & update_data.keys():
-        validate_budget_category_source(
-            db,
-            user_id,
-            update_data.get("category_id", budget.category_id),
-            update_data.get("system_category_id", budget.system_category_id),
-        )
+    if "category_id" in update_data:
+        get_active_user_category(db, user_id, update_data["category_id"])
     for key, value in update_data.items():
         setattr(budget, key, value)
 
